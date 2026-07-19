@@ -59,6 +59,18 @@ test("loads without a selected cell, prefilled notes, or visible spoilers", asyn
   await expect(page.locator(".app-header")).not.toContainText(/available moves?|In progress|Solved/);
 });
 
+test("renders starting digits black and player-entered digits blue", async ({ page }) => {
+  await page.goto("/");
+
+  const startingDigit = page.locator(".cell.given .value").first();
+  await expect(startingDigit).toHaveCSS("color", "rgb(0, 0, 0)");
+
+  const emptyCell = page.locator(".cell:not(.given)").first();
+  await emptyCell.click();
+  await page.locator("[data-digit='1']").click();
+  await expect(emptyCell.locator(".value")).toHaveCSS("color", "rgb(63, 124, 196)");
+});
+
 test("hint starts as coaching and suggests notes before showing exact moves", async ({ page }) => {
   await page.goto("/");
 
