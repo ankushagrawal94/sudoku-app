@@ -313,7 +313,7 @@ button:hover,
 }
 
 .cell.given .value {
-  color: var(--accent);
+  color: #000;
 }
 
 .notes {
