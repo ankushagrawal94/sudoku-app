@@ -5,6 +5,8 @@ import { TECHNIQUE_LEVELS } from "../../src/puzzles.js";
 const KNOWN_GRID = "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
 const GRID_WITH_ONE_THREE_LEFT = "504678912672195348198342567859761423426853791713924856961537284287419635345286179";
 const NEARLY_SOLVED_GRID = "534678912672195348198342567859761423426853791713924856961537284287419635345286170";
+const SOLVED_GRID = "534678912672195348198342567859761423426853791713924856961537284287419635345286179";
+const GRID_WITH_MISSING_THREE_AND_FIVE = "004678912672195348198342567859761423426853791713924856961537284287419635345286179";
 
 async function importGrid(page, grid = KNOWN_GRID) {
   await openMore(page);
@@ -139,9 +141,138 @@ test("finishing a puzzle opens a whimsical celebration with durable stats", asyn
 
   await celebration.getByRole("button", { name: "Keep admiring" }).click();
   await expect(celebration).toHaveCount(0);
+  await expect(page.getByTestId("cell-80")).toBeFocused();
   await page.reload();
   await expect(page.getByTestId("completion-celebration")).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => JSON.parse(window.localStorage.getItem("sudoku-pilot-player-stats-v1")).completed)).toBe(1);
+});
+
+test("importing an already solved grid does not record a completion", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, SOLVED_GRID);
+
+  await expect(page.getByTestId("completion-celebration")).toHaveCount(0);
+  expect(await page.evaluate(() => window.localStorage.getItem("sudoku-pilot-player-stats-v1"))).toBeNull();
+});
+
+test("completion dialog blocks board keyboard input", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+
+  await expect(page.getByTestId("completion-celebration")).toBeVisible();
+  await page.keyboard.press("8");
+
+  await expect(page.getByTestId("cell-80")).toHaveAttribute("aria-label", /value 9/);
+  await expect(page.getByTestId("completion-celebration")).toBeVisible();
+});
+
+test("completion dialog moves focus to its primary action", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+
+  await expect(page.getByRole("button", { name: "Fly another puzzle" })).toBeFocused();
+});
+
+test("completion dialog traps keyboard focus", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+
+  const primary = page.getByRole("button", { name: "Fly another puzzle" });
+  const dismiss = page.getByRole("button", { name: "Keep admiring" });
+  await expect(primary).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(dismiss).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(primary).toBeFocused();
+});
+
+test("Escape dismisses the completion dialog", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByTestId("completion-celebration")).toHaveCount(0);
+});
+
+test("dismissing the completion dialog restores board focus", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByTestId("cell-80")).toBeFocused();
+});
+
+test("solving again after undo reopens celebration without double-counting", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+
+  await expect(page.getByTestId("cell-80")).toHaveAttribute("aria-label", /empty/);
+  await page.locator("[data-digit='9']").click();
+
+  await expect(page.getByTestId("completion-celebration")).toBeVisible();
+  await expect(page.getByTestId("completion-total")).toHaveText("1");
+});
+
+test("restoring a previous puzzle restores its timer and stats", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const key = "sudoku-pilot-state-v1";
+    const saved = JSON.parse(window.localStorage.getItem(key));
+    saved.elapsedBeforeStart = 120;
+    saved.puzzleMoveCount = 3;
+    saved.hintCount = 2;
+    saved.completionRecorded = true;
+    window.localStorage.setItem(key, JSON.stringify(saved));
+  });
+  await page.reload();
+  const emptyCell = page.locator(".cell:not(.given)").first();
+  await emptyCell.click();
+  await page.locator("[data-digit='1']").click();
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await importGrid(page, KNOWN_GRID);
+  await page.getByRole("button", { name: "Restore previous puzzle" }).click();
+
+  const restored = await page.evaluate(() => JSON.parse(window.localStorage.getItem("sudoku-pilot-state-v1")));
+  expect(restored.elapsedBeforeStart).toBe(120);
+  expect(restored.puzzleMoveCount).toBe(4);
+  expect(restored.hintCount).toBe(2);
+  expect(restored.completionRecorded).toBe(true);
+});
+
+test("completion primary action starts a new puzzle without confirmation", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+  const solved = await boardSignature(page);
+  let prompted = false;
+  page.on("dialog", async (dialog) => {
+    prompted = true;
+    await dialog.dismiss();
+  });
+
+  await page.getByRole("button", { name: "Fly another puzzle" }).click();
+
+  expect(prompted).toBe(false);
+  await expect(page.getByTestId("completion-celebration")).toHaveCount(0);
+  expect(await boardSignature(page)).not.toEqual(solved);
 });
 
 test("difficulty tabs start a new puzzle immediately", async ({ page }) => {
@@ -316,7 +447,33 @@ test("number pad grays out a digit after all nine are placed", async ({ page }) 
 
   await expect(three).toHaveClass(/completed/);
   await expect(three).toHaveAttribute("aria-label", "3, completed");
-  await expect(three).toHaveCSS("color", "rgb(154, 164, 175)");
+  const contrast = await three.evaluate((button) => {
+    const parse = (color) => color.match(/\d+/g).slice(0, 3).map(Number);
+    const luminance = (color) => {
+      const channels = parse(color).map((value) => {
+        const channel = value / 255;
+        return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+    };
+    const styles = getComputedStyle(button);
+    const lighter = luminance(styles.backgroundColor);
+    const darker = luminance(styles.color);
+    return (lighter + 0.05) / (darker + 0.05);
+  });
+  expect(contrast).toBeGreaterThanOrEqual(3);
+});
+
+test("number pad does not complete a digit with conflicting placements", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, GRID_WITH_MISSING_THREE_AND_FIVE);
+
+  const three = page.locator("[data-digit='3']");
+  await page.getByTestId("cell-0").click();
+  await three.click();
+
+  await expect(three).not.toHaveClass(/completed/);
+  await expect(three).not.toHaveAttribute("aria-label", "3, completed");
 });
 
 test("note mode allows mistaken pencil notes", async ({ page }) => {
