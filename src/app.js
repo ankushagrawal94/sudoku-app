@@ -314,6 +314,19 @@ function renderKeypad() {
       <div class="digits" aria-label="Number pad">
         ${[1,2,3,4,5,6,7,8,9].map((digit) => `<button class="${state.entryMethod === "digit-first" && state.selectedDigit === digit ? "active" : ""}" data-digit="${digit}">${digit}</button>`).join("")}
       </div>
+      <div class="keypad-control-group" role="group" aria-labelledby="entry-mode-label">
+        <span class="keypad-control-label" id="entry-mode-label">Entry mode</span>
+        <button class="note-mode-toggle ${state.numberMode === "note" ? "active" : ""}" data-action="toggle-notes" role="switch" aria-checked="${state.numberMode === "note"}" aria-labelledby="notes-mode-label" aria-describedby="notes-mode-description">
+          <span class="note-mode-copy">
+            <strong id="notes-mode-label">Notes</strong>
+            <span id="notes-mode-description">${state.numberMode === "note" ? "On — numbers add pencil notes" : "Off — numbers fill cells"}</span>
+          </span>
+          <span class="note-mode-indicator" aria-hidden="true">
+            <span class="note-mode-state">${state.numberMode === "note" ? "On" : "Off"}</span>
+            <span class="toggle-track"><span class="toggle-knob"></span></span>
+          </span>
+        </button>
+      </div>
       <div class="tool-grid">
         <button class="tool-button ${state.multiSelectMode ? "active" : ""}" data-action="toggle-multi" data-testid="multi-select"><span>Multi</span></button>
         <button class="tool-button" data-action="undo"><span>Undo</span></button>
@@ -323,19 +336,6 @@ function renderKeypad() {
       </div>
       ${state.previousPuzzle ? `<button data-action="restore-previous">Restore previous puzzle</button>` : ""}
       <div class="keypad-control-groups">
-        <div class="keypad-control-group" role="group" aria-labelledby="entry-mode-label">
-          <span class="keypad-control-label" id="entry-mode-label">Entry mode</span>
-          <button class="note-mode-toggle ${state.numberMode === "note" ? "active" : ""}" data-action="toggle-notes" role="switch" aria-checked="${state.numberMode === "note"}" aria-labelledby="notes-mode-label" aria-describedby="notes-mode-description">
-            <span class="note-mode-copy">
-              <strong id="notes-mode-label">Notes</strong>
-              <span id="notes-mode-description">${state.numberMode === "note" ? "On — numbers add pencil notes" : "Off — numbers fill cells"}</span>
-            </span>
-            <span class="note-mode-indicator" aria-hidden="true">
-              <span class="note-mode-state">${state.numberMode === "note" ? "On" : "Off"}</span>
-              <span class="toggle-track"><span class="toggle-knob"></span></span>
-            </span>
-          </button>
-        </div>
         <div class="keypad-control-group">
           <span class="keypad-control-label" id="puzzle-notes-label">Puzzle notes</span>
           <div class="puzzle-note-actions" role="group" aria-labelledby="puzzle-notes-label">

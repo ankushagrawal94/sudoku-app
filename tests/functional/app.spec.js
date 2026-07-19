@@ -229,6 +229,21 @@ test("practice hint scoping does not change normal hint defaults", async ({ page
   expect(await techniqueFilters.count()).toEqual(await techniqueFilters.evaluateAll((inputs) => inputs.filter((input) => input.checked).length));
 });
 
+test("notes switch appears above secondary tools", async ({ page }) => {
+  await page.goto("/");
+
+  const notesSwitch = page.getByRole("switch", { name: "Notes", exact: true });
+  const multiButton = page.getByRole("button", { name: "Multi", exact: true });
+  const [notesBox, multiBox] = await Promise.all([
+    notesSwitch.boundingBox(),
+    multiButton.boundingBox()
+  ]);
+
+  expect(notesBox).not.toBeNull();
+  expect(multiBox).not.toBeNull();
+  expect(notesBox.y).toBeLessThan(multiBox.y);
+});
+
 test("note mode toggles pencil notes without filling a value", async ({ page }) => {
   await page.goto("/");
   await importGrid(page);
