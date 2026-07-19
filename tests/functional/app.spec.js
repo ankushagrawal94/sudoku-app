@@ -241,6 +241,18 @@ test("note mode toggles pencil notes without filling a value", async ({ page }) 
   await expect(page.getByTestId("cell-2").locator(".notes .on")).toContainText("4");
 });
 
+test("note mode allows mistaken pencil notes", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page);
+
+  await page.getByTestId("cell-2").click();
+  await page.getByRole("switch", { name: "Notes", exact: true }).click();
+  await page.locator("[data-digit='5']").click();
+
+  await expect(page.getByTestId("cell-2").locator(".value")).toHaveCount(0);
+  await expect(page.getByTestId("cell-2").locator(".notes .on")).toContainText("5");
+});
+
 test("notes switch changes number entry between notes and values", async ({ page }) => {
   await page.goto("/");
   await importGrid(page);
