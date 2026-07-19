@@ -3,6 +3,10 @@ import { ratePuzzle } from "../../src/difficulty.js";
 import { TECHNIQUE_LEVELS } from "../../src/puzzles.js";
 
 const KNOWN_GRID = "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
+const GRID_WITH_ONE_THREE_LEFT = "504678912672195348198342567859761423426853791713924856961537284287419635345286179";
+const NEARLY_SOLVED_GRID = "534678912672195348198342567859761423426853791713924856961537284287419635345286170";
+const SOLVED_GRID = "534678912672195348198342567859761423426853791713924856961537284287419635345286179";
+const GRID_WITH_MISSING_THREE_AND_FIVE = "004678912672195348198342567859761423426853791713924856961537284287419635345286179";
 
 async function importGrid(page, grid = KNOWN_GRID) {
   await openMore(page);
@@ -59,6 +63,26 @@ test("loads without a selected cell, prefilled notes, or visible spoilers", asyn
   await expect(page.locator(".app-header")).not.toContainText(/available moves?|In progress|Solved/);
 });
 
+test("renders starting digits black and player-entered digits blue", async ({ page }) => {
+  await page.goto("/");
+
+  const startingDigit = page.locator(".cell.given .value").first();
+  await expect(startingDigit).toHaveCSS("color", "rgb(0, 0, 0)");
+
+  const emptyCell = page.locator(".cell:not(.given)").first();
+  await emptyCell.click();
+  await page.locator("[data-digit='1']").click();
+  await expect(emptyCell.locator(".value")).toHaveCSS("color", "rgb(63, 124, 196)");
+});
+
+test("tap controls disable double-tap zoom while preserving page zoom", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByTestId("cell-0")).toHaveCSS("touch-action", "manipulation");
+  await expect(page.locator("[data-digit='1']")).toHaveCSS("touch-action", "manipulation");
+  await expect(page.locator("html")).not.toHaveCSS("touch-action", "none");
+});
+
 test("hint starts as coaching and suggests notes before showing exact moves", async ({ page }) => {
   await page.goto("/");
 
@@ -97,6 +121,158 @@ test("new puzzle generates a different board", async ({ page }) => {
   const after = await boardSignature(page);
 
   expect(after).not.toEqual(before);
+});
+
+test("finishing a puzzle opens a whimsical celebration with durable stats", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+
+  const celebration = page.getByTestId("completion-celebration");
+  await expect(celebration).toBeVisible();
+  await expect(celebration.getByRole("heading", { name: "Puzzle complete!" })).toBeVisible();
+  await expect(celebration.getByTestId("completion-time")).toContainText(/\d+:\d{2}/);
+  await expect(celebration.getByTestId("completion-moves")).toContainText("1");
+  await expect(celebration.getByTestId("completion-total")).toContainText("1");
+  await expect(celebration.getByTestId("completion-analysis")).toContainText("without a hint");
+  await expect(celebration.locator(".celebration-spark")).toHaveCount(12);
+
+  await celebration.getByRole("button", { name: "Keep admiring" }).click();
+  await expect(celebration).toHaveCount(0);
+  await expect(page.getByTestId("cell-80")).toBeFocused();
+  await page.reload();
+  await expect(page.getByTestId("completion-celebration")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.localStorage.getItem("sudoku-pilot-player-stats-v1")).completed)).toBe(1);
+});
+
+test("importing an already solved grid does not record a completion", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, SOLVED_GRID);
+
+  await expect(page.getByTestId("completion-celebration")).toHaveCount(0);
+  expect(await page.evaluate(() => window.localStorage.getItem("sudoku-pilot-player-stats-v1"))).toBeNull();
+});
+
+test("completion dialog blocks board keyboard input", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+
+  await expect(page.getByTestId("completion-celebration")).toBeVisible();
+  await page.keyboard.press("8");
+
+  await expect(page.getByTestId("cell-80")).toHaveAttribute("aria-label", /value 9/);
+  await expect(page.getByTestId("completion-celebration")).toBeVisible();
+});
+
+test("completion dialog moves focus to its primary action", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+
+  await expect(page.getByRole("button", { name: "Fly another puzzle" })).toBeFocused();
+});
+
+test("completion dialog traps keyboard focus", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+
+  const primary = page.getByRole("button", { name: "Fly another puzzle" });
+  const dismiss = page.getByRole("button", { name: "Keep admiring" });
+  await expect(primary).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(dismiss).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(primary).toBeFocused();
+});
+
+test("Escape dismisses the completion dialog", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByTestId("completion-celebration")).toHaveCount(0);
+});
+
+test("dismissing the completion dialog restores board focus", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByTestId("cell-80")).toBeFocused();
+});
+
+test("solving again after undo reopens celebration without double-counting", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+
+  await expect(page.getByTestId("cell-80")).toHaveAttribute("aria-label", /empty/);
+  await page.locator("[data-digit='9']").click();
+
+  await expect(page.getByTestId("completion-celebration")).toBeVisible();
+  await expect(page.getByTestId("completion-total")).toHaveText("1");
+});
+
+test("restoring a previous puzzle restores its timer and stats", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const key = "sudoku-pilot-state-v1";
+    const saved = JSON.parse(window.localStorage.getItem(key));
+    saved.elapsedBeforeStart = 120;
+    saved.puzzleMoveCount = 3;
+    saved.hintCount = 2;
+    saved.completionRecorded = true;
+    window.localStorage.setItem(key, JSON.stringify(saved));
+  });
+  await page.reload();
+  const emptyCell = page.locator(".cell:not(.given)").first();
+  await emptyCell.click();
+  await page.locator("[data-digit='1']").click();
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await importGrid(page, KNOWN_GRID);
+  await page.getByRole("button", { name: "Restore previous puzzle" }).click();
+
+  const restored = await page.evaluate(() => JSON.parse(window.localStorage.getItem("sudoku-pilot-state-v1")));
+  expect(restored.elapsedBeforeStart).toBe(120);
+  expect(restored.puzzleMoveCount).toBe(4);
+  expect(restored.hintCount).toBe(2);
+  expect(restored.completionRecorded).toBe(true);
+});
+
+test("completion primary action starts a new puzzle without confirmation", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+  const solved = await boardSignature(page);
+  let prompted = false;
+  page.on("dialog", async (dialog) => {
+    prompted = true;
+    await dialog.dismiss();
+  });
+
+  await page.getByRole("button", { name: "Fly another puzzle" }).click();
+
+  expect(prompted).toBe(false);
+  await expect(page.getByTestId("completion-celebration")).toHaveCount(0);
+  expect(await boardSignature(page)).not.toEqual(solved);
 });
 
 test("difficulty tabs start a new puzzle immediately", async ({ page }) => {
@@ -141,6 +317,9 @@ test("techniques can be run directly or as a selected set", async ({ page }) => 
 
   await page.locator("[data-run-technique='Naked Single']").click();
   await expect(page.getByTestId("run-message")).toContainText("Naked Single");
+  if (await page.getByTestId("completion-celebration").count()) {
+    await page.getByRole("button", { name: "Keep admiring" }).click();
+  }
 
   page.once("dialog", (dialog) => dialog.accept());
   await importGrid(page);
@@ -229,6 +408,21 @@ test("practice hint scoping does not change normal hint defaults", async ({ page
   expect(await techniqueFilters.count()).toEqual(await techniqueFilters.evaluateAll((inputs) => inputs.filter((input) => input.checked).length));
 });
 
+test("notes switch appears above secondary tools", async ({ page }) => {
+  await page.goto("/");
+
+  const notesSwitch = page.getByRole("switch", { name: "Notes", exact: true });
+  const multiButton = page.getByRole("button", { name: "Multi", exact: true });
+  const [notesBox, multiBox] = await Promise.all([
+    notesSwitch.boundingBox(),
+    multiButton.boundingBox()
+  ]);
+
+  expect(notesBox).not.toBeNull();
+  expect(multiBox).not.toBeNull();
+  expect(notesBox.y).toBeLessThan(multiBox.y);
+});
+
 test("note mode toggles pencil notes without filling a value", async ({ page }) => {
   await page.goto("/");
   await importGrid(page);
@@ -239,6 +433,59 @@ test("note mode toggles pencil notes without filling a value", async ({ page }) 
 
   await expect(page.getByTestId("cell-2").locator(".value")).toHaveCount(0);
   await expect(page.getByTestId("cell-2").locator(".notes .on")).toContainText("4");
+});
+
+test("number pad grays out a digit after all nine are placed", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, GRID_WITH_ONE_THREE_LEFT);
+
+  const three = page.locator("[data-digit='3']");
+  await expect(three).not.toHaveClass(/completed/);
+
+  await page.getByTestId("cell-1").click();
+  await three.click();
+
+  await expect(three).toHaveClass(/completed/);
+  await expect(three).toHaveAttribute("aria-label", "3, completed");
+  const contrast = await three.evaluate((button) => {
+    const parse = (color) => color.match(/\d+/g).slice(0, 3).map(Number);
+    const luminance = (color) => {
+      const channels = parse(color).map((value) => {
+        const channel = value / 255;
+        return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+    };
+    const styles = getComputedStyle(button);
+    const lighter = luminance(styles.backgroundColor);
+    const darker = luminance(styles.color);
+    return (lighter + 0.05) / (darker + 0.05);
+  });
+  expect(contrast).toBeGreaterThanOrEqual(3);
+});
+
+test("number pad does not complete a digit with conflicting placements", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page, GRID_WITH_MISSING_THREE_AND_FIVE);
+
+  const three = page.locator("[data-digit='3']");
+  await page.getByTestId("cell-0").click();
+  await three.click();
+
+  await expect(three).not.toHaveClass(/completed/);
+  await expect(three).not.toHaveAttribute("aria-label", "3, completed");
+});
+
+test("note mode allows mistaken pencil notes", async ({ page }) => {
+  await page.goto("/");
+  await importGrid(page);
+
+  await page.getByTestId("cell-2").click();
+  await page.getByRole("switch", { name: "Notes", exact: true }).click();
+  await page.locator("[data-digit='5']").click();
+
+  await expect(page.getByTestId("cell-2").locator(".value")).toHaveCount(0);
+  await expect(page.getByTestId("cell-2").locator(".notes .on")).toContainText("5");
 });
 
 test("notes switch changes number entry between notes and values", async ({ page }) => {

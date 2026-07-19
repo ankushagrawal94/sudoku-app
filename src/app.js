@@ -34,6 +34,7 @@ inject();
 const STORAGE_KEY = "sudoku-pilot-state-v1";
 const LEGACY_STORAGE_KEY = "sudoku-method-state-v1";
 const PLAYED_PUZZLES_KEY = "sudoku-pilot-played-canonical-v1";
+const PLAYER_STATS_KEY = "sudoku-pilot-player-stats-v1";
 const TECHNIQUE_DEFAULTS_VERSION = 2;
 const playedCanonicalIds = loadPlayedCanonicalIds();
 const MAX_HISTORY = 40;
@@ -67,6 +68,7 @@ function render() {
     const targetIndex = state.moves.findIndex((move) => sameMoveAction(move, state.practiceSession.targetMove));
     if (targetIndex > 0) state.moves.unshift(...state.moves.splice(targetIndex, 1));
   }
+  recordPuzzleCompletion();
   state.hintIndex = Math.min(state.hintIndex, Math.max(0, state.moves.length - 1));
   const check = checkBoard({ revealSolutionMistakes: state.showMistakes });
 
@@ -101,12 +103,79 @@ function render() {
           </section>
         </section>
       `}
+      ${state.completionSummary ? renderCompletionCelebration() : ""}
     </section>
   `;
 
   bindEvents();
   saveState();
   focusRequestedHint();
+  activateCompletionDialog();
+}
+
+function activateCompletionDialog() {
+  const dialog = app.querySelector("[data-testid='completion-celebration']");
+  if (!dialog) return;
+  [...dialog.parentElement.children].filter((child) => child !== dialog).forEach((child) => { child.inert = true; });
+  dialog.querySelector("[data-action='new-puzzle-after-completion']")?.focus();
+}
+
+function dismissCompletionCelebration() {
+  state.completionSummary = null;
+  render();
+  if (state.selected !== null) app.querySelector(`[data-cell='${state.selected}']`)?.focus();
+}
+
+function renderCompletionCelebration() {
+  const summary = state.completionSummary;
+  return `
+    <section class="celebration-backdrop" data-testid="completion-celebration" role="dialog" aria-modal="true" aria-labelledby="completion-title">
+      <div class="celebration-card">
+        <div class="celebration-sparks" aria-hidden="true">
+          ${Array.from({ length: 12 }, (_, index) => `<i class="celebration-spark spark-${index + 1}"></i>`).join("")}
+        </div>
+        <p class="celebration-kicker">Flight complete</p>
+        <h2 id="completion-title">Puzzle complete!</h2>
+        <p class="celebration-copy">The grid is glowing and your pencil has earned a tiny parade.</p>
+        <dl class="completion-stats">
+          <div><dt>Time</dt><dd data-testid="completion-time">${formatElapsed(summary.elapsed)}</dd></div>
+          <div><dt>Moves</dt><dd data-testid="completion-moves">${summary.moves}</dd></div>
+          <div><dt>Completed</dt><dd data-testid="completion-total">${summary.completed}</dd></div>
+        </dl>
+        <p class="completion-analysis" data-testid="completion-analysis">${summary.analysis}</p>
+        <div class="celebration-actions">
+          <button data-action="dismiss-celebration">Keep admiring</button>
+          <button class="primary" data-action="new-puzzle-after-completion">Fly another puzzle</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function recordPuzzleCompletion() {
+  const solved = isSolved(state.puzzle.values);
+  if (!solved) {
+    state.wasSolved = false;
+    return;
+  }
+  if (state.wasSolved) return;
+  state.wasSolved = true;
+  if (!state.completionRecorded) {
+    state.completionRecorded = true;
+    state.playerStats.completed += 1;
+    savePlayerStats();
+  }
+  const elapsed = elapsedSeconds();
+  state.elapsedBeforeStart = elapsed;
+  state.startedAt = Date.now();
+  state.completionSummary = {
+    elapsed,
+    moves: state.puzzleMoveCount,
+    completed: state.playerStats.completed,
+    analysis: state.hintCount
+      ? `You finished with ${state.hintCount} coach assist${state.hintCount === 1 ? "" : "s"}. Every assist is another pattern in your toolkit.`
+      : "You solved this one without a hint. Crisp, clean flying."
+  };
 }
 
 function renderLessonBrowser() {
@@ -308,11 +377,40 @@ function renderBoard() {
   `;
 }
 
+function isDigitComplete(digit) {
+  const placements = state.puzzle.values.flatMap((value, index) => value === digit ? [index] : []);
+  if (placements.length !== 9) return false;
+  const boxes = placements.map((index) => Math.floor(rowOf(index) / 3) * 3 + Math.floor(colOf(index) / 3));
+  return new Set(placements.map(rowOf)).size === 9
+    && new Set(placements.map(colOf)).size === 9
+    && new Set(boxes).size === 9;
+}
+
 function renderKeypad() {
+  const completedDigits = new Set(
+    [1,2,3,4,5,6,7,8,9].filter(isDigitComplete)
+  );
   return `
     <section class="mobile-controls" aria-label="Puzzle controls">
       <div class="digits" aria-label="Number pad">
-        ${[1,2,3,4,5,6,7,8,9].map((digit) => `<button class="${state.entryMethod === "digit-first" && state.selectedDigit === digit ? "active" : ""}" data-digit="${digit}">${digit}</button>`).join("")}
+        ${[1,2,3,4,5,6,7,8,9].map((digit) => {
+          const completed = completedDigits.has(digit);
+          const active = state.entryMethod === "digit-first" && state.selectedDigit === digit;
+          return `<button class="${active ? "active " : ""}${completed ? "completed" : ""}" data-digit="${digit}"${completed ? ` aria-label="${digit}, completed"` : ""}>${digit}</button>`;
+        }).join("")}
+      </div>
+      <div class="keypad-control-group" role="group" aria-labelledby="entry-mode-label">
+        <span class="keypad-control-label" id="entry-mode-label">Entry mode</span>
+        <button class="note-mode-toggle ${state.numberMode === "note" ? "active" : ""}" data-action="toggle-notes" role="switch" aria-checked="${state.numberMode === "note"}" aria-labelledby="notes-mode-label" aria-describedby="notes-mode-description">
+          <span class="note-mode-copy">
+            <strong id="notes-mode-label">Notes</strong>
+            <span id="notes-mode-description">${state.numberMode === "note" ? "On — numbers add pencil notes" : "Off — numbers fill cells"}</span>
+          </span>
+          <span class="note-mode-indicator" aria-hidden="true">
+            <span class="note-mode-state">${state.numberMode === "note" ? "On" : "Off"}</span>
+            <span class="toggle-track"><span class="toggle-knob"></span></span>
+          </span>
+        </button>
       </div>
       <div class="tool-grid">
         <button class="tool-button ${state.multiSelectMode ? "active" : ""}" data-action="toggle-multi" data-testid="multi-select"><span>Multi</span></button>
@@ -323,19 +421,6 @@ function renderKeypad() {
       </div>
       ${state.previousPuzzle ? `<button data-action="restore-previous">Restore previous puzzle</button>` : ""}
       <div class="keypad-control-groups">
-        <div class="keypad-control-group" role="group" aria-labelledby="entry-mode-label">
-          <span class="keypad-control-label" id="entry-mode-label">Entry mode</span>
-          <button class="note-mode-toggle ${state.numberMode === "note" ? "active" : ""}" data-action="toggle-notes" role="switch" aria-checked="${state.numberMode === "note"}" aria-labelledby="notes-mode-label" aria-describedby="notes-mode-description">
-            <span class="note-mode-copy">
-              <strong id="notes-mode-label">Notes</strong>
-              <span id="notes-mode-description">${state.numberMode === "note" ? "On — numbers add pencil notes" : "Off — numbers fill cells"}</span>
-            </span>
-            <span class="note-mode-indicator" aria-hidden="true">
-              <span class="note-mode-state">${state.numberMode === "note" ? "On" : "Off"}</span>
-              <span class="toggle-track"><span class="toggle-knob"></span></span>
-            </span>
-          </button>
-        </div>
         <div class="keypad-control-group">
           <span class="keypad-control-label" id="puzzle-notes-label">Puzzle notes</span>
           <div class="puzzle-note-actions" role="group" aria-labelledby="puzzle-notes-label">
@@ -910,6 +995,7 @@ function handleAction(action) {
   if (action === "fill-notes") fillNotesWithHistory();
   if (action === "clear-notes") clearNotesWithHistory();
   if (action === "new-puzzle") startPuzzle();
+  if (action === "new-puzzle-after-completion") startPuzzle(state.difficulty, { skipConfirm: true });
   if (action === "practice") openPracticeBrowser();
   if (action === "practice-from-lesson") openPracticeFromLesson();
   if (action === "start-certified-practice" || action === "practice-retry") startCertifiedPractice(state.practiceFixtureIndex);
@@ -959,10 +1045,29 @@ function handleAction(action) {
   if (action === "cancel-ocr") cancelOcr();
   if (action === "restore-previous") restorePreviousPuzzle();
   if (action === "clear-local-data") clearLocalData();
+  if (action === "dismiss-celebration") {
+    dismissCompletionCelebration();
+    return;
+  }
   render();
 }
 
 function handleKeydown(event) {
+  if (state.completionSummary) {
+    if (event.key === "Escape") {
+      dismissCompletionCelebration();
+      return;
+    }
+    if (event.key === "Tab") {
+      const actions = [...app.querySelectorAll("[data-testid='completion-celebration'] button")];
+      if (!actions.length) return;
+      event.preventDefault();
+      const current = actions.indexOf(document.activeElement);
+      const offset = event.shiftKey ? -1 : 1;
+      actions[(current + offset + actions.length) % actions.length].focus();
+    }
+    return;
+  }
   if (isTextEditingTarget(event.target)) return;
   if (/^[1-9]$/.test(event.key)) enterDigit(Number(event.key));
   if (event.key === "Backspace" || event.key === "Delete" || event.key === "0") eraseSelected();
@@ -1001,8 +1106,9 @@ function enterDigit(digit) {
     if (state.puzzle.values[state.selected]) return;
     const notes = state.puzzle.notes[state.selected];
     if (notes.has(digit)) notes.delete(digit);
-    else if (legalCandidates(state.puzzle.values, state.selected).has(digit)) notes.add(digit);
+    else notes.add(digit);
   } else {
+    if (state.puzzle.values[state.selected] !== digit) state.puzzleMoveCount += 1;
     state.puzzle.values[state.selected] = digit;
     state.puzzle.notes[state.selected].clear();
     for (let index = 0; index < 81; index += 1) {
@@ -1098,6 +1204,7 @@ function undo() {
   const history = state.puzzle.history;
   state.puzzle = last;
   state.puzzle.history = history;
+  state.completionSummary = null;
   syncPracticeProgress();
   state.runMessage = "Undid last change.";
   closeHintDetails();
@@ -1122,8 +1229,8 @@ function clearNotesWithHistory() {
   closeHintDetails();
 }
 
-function startPuzzle(difficulty = state.difficulty) {
-  if (hasPlayerProgress() && !window.confirm("Start a new puzzle? Your current progress will be lost.")) {
+function startPuzzle(difficulty = state.difficulty, { skipConfirm = false } = {}) {
+  if (!skipConfirm && hasPlayerProgress() && !window.confirm("Start a new puzzle? Your current progress will be lost.")) {
     return;
   }
   state.difficulty = difficulty;
@@ -1134,6 +1241,7 @@ function startPuzzle(difficulty = state.difficulty) {
   state.moreOpen = false;
   state.importOpen = false;
   state.runMessage = `Started a new ${difficulty} puzzle.`;
+  resetPuzzleStats();
   resetTimer();
   closeHintDetails();
 }
@@ -1168,7 +1276,7 @@ function startCertifiedPractice(index = 0) {
     state.practiceFixtureIndex = session.fixtureIndex;
     state.practiceAnswer = null;
     state.practiceError = "";
-    state.previousPuzzle = clonePuzzle(state.puzzle);
+    state.previousPuzzle = snapshotCurrentPuzzle();
     state.puzzle = clonePuzzle(session.puzzle);
     state.selected = null;
     state.multiSelected.clear();
@@ -1176,6 +1284,7 @@ function startCertifiedPractice(index = 0) {
     state.moreOpen = false;
     state.importOpen = false;
     state.runMessage = `${session.technique} practice example ready.`;
+    resetPuzzleStats();
     resetTimer();
     closeHintDetails();
   } catch (error) {
@@ -1285,6 +1394,8 @@ function applyCurrentHint() {
   const move = state.moves[state.hintIndex];
   if (move) {
     applyMove(state.puzzle, move);
+    state.puzzleMoveCount += (move.fills || []).length;
+    state.hintCount += 1;
     if (state.practiceSession && sameMoveAction(move, state.practiceSession.targetMove)) state.practiceSession.targetApplied = true;
     state.runMessage = `Applied ${move.technique}: ${move.title}.`;
   }
@@ -1322,6 +1433,8 @@ function runSelectedTechniques() {
     state.runMessage = "No selected techniques can move this board forward.";
     return;
   }
+  state.puzzleMoveCount += applied.reduce((total, move) => total + (move.fills || []).length, 0);
+  state.hintCount += 1;
   const counts = groupMoves(applied).map(([technique, count]) => `${count} ${technique}`).join(", ");
   state.runMessage = `Applied ${applied.length} move${applied.length === 1 ? "" : "s"}: ${counts}.`;
   closeHintDetails();
@@ -1334,6 +1447,10 @@ function runOneTechnique(technique) {
     return;
   }
   const applied = applySelectedTechniques(state.puzzle, [technique]);
+  if (applied.length) {
+    state.puzzleMoveCount += applied.reduce((total, move) => total + (move.fills || []).length, 0);
+    state.hintCount += 1;
+  }
   state.runMessage = applied.length ? `Applied ${applied.length} ${technique} move${applied.length === 1 ? "" : "s"}.` : `${technique} cannot move this board right now.`;
   closeHintDetails();
 }
@@ -1346,7 +1463,7 @@ function applyImport() {
     return;
   }
   if (hasPlayerProgress() && !window.confirm("Import this puzzle? Your current progress can be restored afterwards.")) return;
-  state.previousPuzzle = clonePuzzle(state.puzzle);
+  state.previousPuzzle = snapshotCurrentPuzzle();
   state.puzzle = candidate;
   state.selected = null;
   state.multiSelected.clear();
@@ -1355,6 +1472,8 @@ function applyImport() {
   state.moreOpen = false;
   state.importStatus = "";
   state.runMessage = "Imported puzzle.";
+  resetPuzzleStats();
+  resetTimer();
   closeHintDetails();
 }
 
@@ -1386,9 +1505,28 @@ function validatePuzzle(puzzle) {
 
 function restorePreviousPuzzle() {
   if (!state.previousPuzzle) return;
-  state.puzzle = state.previousPuzzle;
+  const previous = state.previousPuzzle;
+  state.puzzle = previous.puzzle;
+  state.elapsedBeforeStart = previous.elapsedBeforeStart;
+  state.startedAt = Date.now();
+  state.puzzleMoveCount = previous.puzzleMoveCount;
+  state.hintCount = previous.hintCount;
+  state.completionRecorded = previous.completionRecorded;
+  state.completionSummary = null;
+  state.wasSolved = previous.wasSolved;
   state.previousPuzzle = null;
   state.runMessage = "Restored your previous puzzle.";
+}
+
+function snapshotCurrentPuzzle() {
+  return {
+    puzzle: clonePuzzle(state.puzzle),
+    elapsedBeforeStart: elapsedSeconds(),
+    puzzleMoveCount: state.puzzleMoveCount,
+    hintCount: state.hintCount,
+    completionRecorded: state.completionRecorded,
+    wasSolved: state.wasSolved
+  };
 }
 
 function clearLocalData() {
@@ -1396,11 +1534,21 @@ function clearLocalData() {
     window.localStorage.removeItem(STORAGE_KEY);
     window.localStorage.removeItem(LEGACY_STORAGE_KEY);
     window.localStorage.removeItem(PLAYED_PUZZLES_KEY);
+    window.localStorage.removeItem(PLAYER_STATS_KEY);
     playedCanonicalIds.clear();
+    state.playerStats = { completed: 0 };
     state.runMessage = "Cleared locally saved puzzle data.";
   } catch {
     state.runMessage = "Could not clear local data. Your browser blocked storage access.";
   }
+}
+
+function resetPuzzleStats() {
+  state.puzzleMoveCount = 0;
+  state.hintCount = 0;
+  state.completionRecorded = false;
+  state.completionSummary = null;
+  state.wasSolved = isSolved(state.puzzle.values);
 }
 
 function checkBoard({ revealSolutionMistakes = true } = {}) {
@@ -1560,6 +1708,12 @@ function createInitialState() {
     selectedDigit: null,
     startedAt: Date.now(),
     elapsedBeforeStart: 0,
+    puzzleMoveCount: 0,
+    hintCount: 0,
+    completionRecorded: false,
+    completionSummary: null,
+    wasSolved: false,
+    playerStats: loadPlayerStats(),
     focusHint: false,
     importOpen: false,
     aboutOpen: false,
@@ -1576,6 +1730,7 @@ function createInitialState() {
     ocrRequestId: null,
     previousPuzzle: null
   };
+  fallback.wasSolved = isSolved(fallback.puzzle.values);
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY) || window.localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return fallback;
@@ -1600,6 +1755,10 @@ function createInitialState() {
       entryMethod: saved.entryMethod === "digit-first" ? "digit-first" : "cell-first",
       startedAt: Number(saved.startedAt) || Date.now(),
       elapsedBeforeStart: Number(saved.elapsedBeforeStart) || 0,
+      puzzleMoveCount: Math.max(0, Number(saved.puzzleMoveCount) || 0),
+      hintCount: Math.max(0, Number(saved.hintCount) || 0),
+      completionRecorded: Boolean(saved.completionRecorded),
+      wasSolved: isSolved(puzzle.values),
       runMessage: saved.runMessage || "",
       importCells: Array.isArray(saved.importCells) && saved.importCells.length === 81 ? saved.importCells : fallback.importCells
     };
@@ -1625,6 +1784,9 @@ function saveState() {
       entryMethod: state.entryMethod,
       startedAt: state.startedAt,
       elapsedBeforeStart: state.elapsedBeforeStart,
+      puzzleMoveCount: state.puzzleMoveCount,
+      hintCount: state.hintCount,
+      completionRecorded: state.completionRecorded,
       runMessage: state.runMessage,
       importCells: state.importCells
     };
@@ -1632,6 +1794,23 @@ function saveState() {
     window.localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
     state.runMessage = "Progress could not be saved locally. Your browser storage is unavailable.";
+  }
+}
+
+function loadPlayerStats() {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(PLAYER_STATS_KEY) || "null");
+    return { completed: Math.max(0, Number(saved?.completed) || 0) };
+  } catch {
+    return { completed: 0 };
+  }
+}
+
+function savePlayerStats() {
+  try {
+    window.localStorage.setItem(PLAYER_STATS_KEY, JSON.stringify(state.playerStats));
+  } catch {
+    // Puzzle progress still saves through the primary state store when available.
   }
 }
 
