@@ -316,7 +316,7 @@ function renderPrivacyPage() {
         </section>
         <section id="source-code">
           <h2>Source code and third-party software</h2>
-          <p>The app's <a href="https://github.com/ankushagrawal94/sudoku-app">source code</a> is available under the <a href="/licenses/PolyForm-Noncommercial-1.0.0.txt">PolyForm Noncommercial License 1.0.0</a>. It permits noncommercial use, modification, and redistribution, but does not permit commercial use. The Sudoku Pilot name, logo, and branding are separately reserved. See the <a href="/third-party-notices.txt">third-party notices</a> for separately licensed components and data.</p>
+          <p>The app's <a href="https://github.com/ankushagrawal94/sudoku-pilot">source code</a> is available under the <a href="/licenses/PolyForm-Noncommercial-1.0.0.txt">PolyForm Noncommercial License 1.0.0</a>. It permits noncommercial use, modification, and redistribution, but does not permit commercial use. The Sudoku Pilot name, logo, and branding are separately reserved. See the <a href="/third-party-notices.txt">third-party notices</a> for separately licensed components and data.</p>
         </section>
       </article>
     </main>
