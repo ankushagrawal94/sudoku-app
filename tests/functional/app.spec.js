@@ -185,14 +185,14 @@ test("new puzzle generates a different board", async ({ page }) => {
   expect(after).not.toEqual(before);
 });
 
-test("more menu prioritizes closing and explains automation before technique selection", async ({ page }) => {
+test("more menu prioritizes closing and keeps puzzle import with start actions", async ({ page }) => {
   await page.goto("/");
   await openMore(page);
 
   const morePanel = page.getByTestId("more-panel");
   await expect(morePanel.getByRole("button", { name: "Close", exact: true })).toHaveClass(/primary/);
   await expect(morePanel.getByRole("button", { name: "Practice selected technique", exact: true })).toHaveCount(0);
-  await expect(morePanel.getByRole("button", { name: "Import screenshot", exact: true })).toHaveCount(0);
+  await expect(morePanel.getByRole("button", { name: "Import screenshot", exact: true })).toBeVisible();
   await expect(morePanel).toContainText("Run every checked technique repeatedly until none of them can move the board forward.");
 
   const headings = await morePanel.getByRole("heading").allTextContents();

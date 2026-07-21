@@ -640,6 +640,7 @@ function renderNewPuzzle() {
       </div>
       <div class="action-stack">
         <button class="primary" data-action="new-puzzle" data-testid="new-puzzle">New generated puzzle</button>
+        <button data-action="toggle-import">Import screenshot</button>
       </div>
     </section>
   `;
