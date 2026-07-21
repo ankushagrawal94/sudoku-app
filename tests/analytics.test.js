@@ -146,6 +146,16 @@ import { createBrowserProductAnalytics } from "../src/browserAnalytics.js";
   journey.recordInteraction();
   journey.recordInteraction();
   assert.deepEqual(events, [["puzzle_started", context]]);
+
+  events.length = 0;
+  journey.resume(context, 0, true);
+  journey.recordHint({ technique: "Hidden Single" });
+  journey.recordInteraction();
+  journey.recordMove(1);
+  assert.deepEqual(events, [
+    ["hint_requested", { ...context, technique: "Hidden Single" }],
+    ["puzzle_first_move", context]
+  ]);
 }
 
 {

@@ -71,9 +71,9 @@ export function createPuzzleJourney(capture) {
   let firstMoveCaptured = false;
   let meaningfulPlayCaptured = false;
 
-  function reset(nextContext, existingMoves = 0) {
+  function reset(nextContext, existingMoves = 0, hasExistingProgress = existingMoves > 0) {
     context = { ...nextContext };
-    startCaptured = existingMoves > 0;
+    startCaptured = hasExistingProgress;
     firstMoveCaptured = existingMoves > 0;
     meaningfulPlayCaptured = existingMoves >= 5;
   }
@@ -85,8 +85,8 @@ export function createPuzzleJourney(capture) {
   }
 
   return {
-    resume(nextContext, existingMoves = 0) {
-      reset(nextContext, existingMoves);
+    resume(nextContext, existingMoves = 0, hasExistingProgress = existingMoves > 0) {
+      reset(nextContext, existingMoves, hasExistingProgress);
     },
 
     start(nextContext) {
