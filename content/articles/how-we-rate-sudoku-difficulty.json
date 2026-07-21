@@ -17,7 +17,7 @@
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Before assigning a level, Sudoku Pilot checks that the givens have exactly one solution. Its solver must then complete the grid with the same named techniques available in the coach. The rating and solve metadata must remain stable when the check runs again."
+          "text": "Before assigning a level, Sudoku Pilot checks that the starting clues lead to exactly one solution. Its solver must then complete the grid with the same named techniques available in the coach. The rating and solve metadata must remain stable when the check runs again."
         },
         {
           "type": "paragraph",
