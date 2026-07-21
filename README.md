@@ -18,7 +18,7 @@ When you get stuck, the coach shows the logical moves available from the techniq
 ## Top features
 
 - **Progressive coaching catalog.** Learn and practice 17 fully coached techniques: Last Digit; Naked and Hidden Singles; Pointing and Claiming Candidates; Hidden Pairs and Triples; Naked Pairs, Triples, and Quads; X-Wing; Swordfish; Skyscraper; 2-String Kite; XY-Wing; XYZ-Wing; and W-Wing. Hidden Quadruple, Jellyfish, Crane, Simple Colouring, and Empty Rectangle are also available as clearly labeled provisional detectors.
-- **No guessing required.** Every generated puzzle has a unique solution and a verified logical path from start to finish. You will never need trial and error—sometimes called Bowman's Bingo—to complete one.
+- **No guessing required.** Every generated puzzle has a unique solution and a verified logical path from start to finish. You will never need trial and error, sometimes called Bowman's Bingo, to complete one.
 - **Every available next move.** Instead of choosing one hint for you, the coach lets you compare all the logical moves currently available from your selected techniques.
 - **Hints that do not spoil the solve.** Reveal help gradually, from the technique and where to look through the exact move. Stop as soon as you have enough to continue on your own.
 - **Practice for a specific technique.** Choose the pattern you want to learn instead of waiting for it to appear in a random puzzle. Practice finding it, using it in a complete solve, and distinguishing it from near misses.

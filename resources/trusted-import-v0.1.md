@@ -317,7 +317,7 @@ These thresholds are product targets, not claims about current capability. They 
 - Full visible-state exact rate at least 0.50 overall.
 - Unflagged content-error rate below 0.02 of non-empty value or candidate-bearing cells.
 
-If these raw-recognition floors prove unrealistic on the validation split, the product decision is to narrow the supported sources or keep candidate recognition experimental—not silently weaken the frozen-test gate.
+If these raw-recognition floors prove unrealistic on the validation split, the product decision is to narrow the supported sources or keep candidate recognition experimental, not silently weaken the frozen-test gate.
 
 ### Diagnosis gates
 
@@ -389,4 +389,4 @@ Implementation is intentionally gated on the following user-provided evidence:
 3. Confirmation that the screenshots may be retained in the private development corpus.
 4. Ground-truth transcription or permission for Codex to prepare one for human verification.
 
-Until those inputs exist, the correct next work is the diagnosis engine and review/alignment foundation—not a claim of candidate-note recognition quality.
+Until those inputs exist, the correct next work is the diagnosis engine and review/alignment foundation, not a claim of candidate-note recognition quality.
