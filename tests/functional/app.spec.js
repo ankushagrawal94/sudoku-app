@@ -169,6 +169,9 @@ test("offers iPhone Home Screen instructions after a first completion", async ({
   await expect(prompt).toContainText("Share");
   await expect(prompt).toContainText("Add to Home Screen");
   await expect(prompt).toContainText("Open as Web App");
+  await expect(prompt.locator(".ios-visual-card")).toHaveCount(2);
+  await expect(prompt).not.toContainText("App Store");
+  await expect(prompt).not.toContainText("—");
   await prompt.getByRole("button", { name: "Got it" }).click();
   await expect(prompt).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => window.localStorage.getItem("sudoku-pilot-install-promotion-v1"))).toBe("dismissed");
@@ -176,6 +179,25 @@ test("offers iPhone Home Screen instructions after a first completion", async ({
   await openMore(page);
   await expect(page.getByRole("button", { name: "How to install" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Offline setup guide" })).toBeVisible();
+});
+
+test("does not promote installation when already running from the Home Screen", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperties(navigator, {
+      userAgent: {
+        configurable: true,
+        get: () => "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 Version/18.5 Mobile/15E148 Safari/604.1"
+      },
+      standalone: { configurable: true, get: () => true }
+    });
+  });
+  await page.goto("/");
+  await importGrid(page, NEARLY_SOLVED_GRID);
+  await page.getByTestId("cell-80").click();
+  await page.locator("[data-digit='9']").click();
+
+  await expect(page.getByTestId("completion-celebration")).toBeVisible();
+  await expect(page.getByTestId("completion-install-promo")).toHaveCount(0);
 });
 
 test("uses Android's native install flow when the browser makes it available", async ({ page }) => {
@@ -593,14 +615,14 @@ test("notes switch changes number entry between notes and values", async ({ page
   await notesSwitch.click();
   await expect(notesSwitch).toHaveAttribute("aria-checked", "true");
   await expect(board).toHaveClass(/note-entry-mode/);
-  await expect(page.getByText("On — numbers add pencil notes", { exact: true })).toBeVisible();
+  await expect(page.getByText("On: numbers add pencil notes", { exact: true })).toBeVisible();
   await page.locator("[data-digit='4']").click();
   await expect(page.getByTestId("cell-2").locator(".value")).toHaveCount(0);
 
   await notesSwitch.click();
   await expect(notesSwitch).toHaveAttribute("aria-checked", "false");
   await expect(board).toHaveClass(/value-entry-mode/);
-  await expect(page.getByText("Off — numbers fill cells", { exact: true })).toBeVisible();
+  await expect(page.getByText("Off: numbers fill cells", { exact: true })).toBeVisible();
   await page.locator("[data-digit='4']").click();
   await expect(page.getByTestId("cell-2").locator(".value")).toContainText("4");
 });
@@ -654,7 +676,7 @@ test("notes switch is explicit and separate from puzzle-wide note actions", asyn
   const notesSwitch = entryMode.getByRole("switch", { name: "Notes", exact: true });
 
   await expect(notesSwitch).toHaveAttribute("aria-checked", "false");
-  await expect(entryMode.getByText("Off — numbers fill cells", { exact: true })).toBeVisible();
+  await expect(entryMode.getByText("Off: numbers fill cells", { exact: true })).toBeVisible();
   await expect(puzzleNotes.getByRole("button", { name: "Fill all notes", exact: true })).toBeVisible();
   await expect(puzzleNotes.getByRole("button", { name: "Clear all notes", exact: true })).toBeVisible();
 });

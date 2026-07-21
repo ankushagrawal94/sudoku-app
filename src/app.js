@@ -204,7 +204,7 @@ function renderInstallPrompt() {
         <img class="install-app-icon" src="/icons/icon-192.png" alt="" />
         <p class="install-kicker">Ready for takeoff</p>
         <h2 id="install-title">Play offline from your Home Screen</h2>
-        <p class="install-benefit">It opens full screen, loads with no connection, and stays one tap away—without an App Store download.</p>
+        <p class="install-benefit">It opens full screen, loads without a connection, and stays one tap away.</p>
         ${androidInstall ? `
           <ol class="install-steps">
             <li><span class="install-step-number">1</span><span>Tap <strong>Install now</strong> below.</span></li>
@@ -216,9 +216,8 @@ function renderInstallPrompt() {
             <button class="primary" data-action="install-app">Install now</button>
           </div>
         ` : `
+          ${renderIosInstallVisuals()}
           <ol class="install-steps">
-            <li><span class="install-step-icon" aria-hidden="true">${shareIcon()}</span><span>Tap the browser’s <strong>Share</strong> button. If you see a More button first, tap it, then Share.</span></li>
-            <li><span class="install-step-icon install-plus" aria-hidden="true">＋</span><span>Scroll down and tap <strong>Add to Home Screen</strong>.</span></li>
             <li><span class="install-step-number">3</span><span>Turn on <strong>Open as Web App</strong>, then tap <strong>Add</strong>.</span></li>
           </ol>
           <div class="install-actions">
@@ -228,6 +227,30 @@ function renderInstallPrompt() {
         `}
       </div>
     </section>
+  `;
+}
+
+function renderIosInstallVisuals() {
+  return `
+    <div class="ios-install-visuals" aria-label="Visual guide to the iPhone Share menu">
+      <figure class="ios-visual-card">
+        <figcaption><span>1</span><strong>Tap Share</strong></figcaption>
+        <div class="ios-safari-preview" aria-hidden="true">
+          <div class="ios-page-mini"><img src="/icons/icon-192.png" alt="" /><span>sudokupilot.com</span></div>
+          <div class="ios-toolbar-mini">
+            <span>‹</span><span>›</span><span class="ios-share-highlight">${shareIcon()}</span><span>▢</span><span>☷</span>
+          </div>
+        </div>
+      </figure>
+      <figure class="ios-visual-card">
+        <figcaption><span>2</span><strong>Choose this row</strong></figcaption>
+        <div class="ios-share-sheet-preview" aria-hidden="true">
+          <i></i>
+          <div class="ios-share-site"><img src="/icons/icon-192.png" alt="" /><span>Sudoku Pilot<small>sudokupilot.com</small></span></div>
+          <div class="ios-share-row"><span class="ios-home-icon">＋</span><strong>Add to Home Screen</strong><span>›</span></div>
+        </div>
+      </figure>
+    </div>
   `;
 }
 
@@ -409,7 +432,7 @@ function renderPracticeSession(session) {
         <div class="panel-title"><h3>${mode.label}</h3><span>Example ${session.fixtureIndex + 1} of 10</span></div>
         <p>${practicePrompt(session)}</p>
         <details class="practice-verification"><summary>Why this example is trustworthy</summary><ul class="certification-list"><li>It has exactly one solution.</li><li>${session.technique} works on the board now.</li><li>The shown move preserves the solution.</li><li>You can finish with techniques taught in Sudoku Pilot.</li></ul></details>
-        ${targetApplied ? `<p class="practice-success" role="status">Nice—the ${session.technique} move is applied. Keep solving or open another example.</p>` : ""}
+        ${targetApplied ? `<p class="practice-success" role="status">Nice, the ${session.technique} move is applied. Keep solving or open another example.</p>` : ""}
         <div class="tool-row"><button data-action="back-to-lesson">Review lesson</button><button class="primary" data-action="next-practice-example">Start another example</button></div>
       </section>
       ${session.mode === "near-miss" ? renderNearMissPractice(session) : `
@@ -533,7 +556,7 @@ function renderKeypad() {
         <button class="note-mode-toggle ${state.numberMode === "note" ? "active" : ""}" data-action="toggle-notes" role="switch" aria-checked="${state.numberMode === "note"}" aria-labelledby="notes-mode-label" aria-describedby="notes-mode-description">
           <span class="note-mode-copy">
             <strong id="notes-mode-label">Notes</strong>
-            <span id="notes-mode-description">${state.numberMode === "note" ? "On — numbers add pencil notes" : "Off — numbers fill cells"}</span>
+            <span id="notes-mode-description">${state.numberMode === "note" ? "On: numbers add pencil notes" : "Off: numbers fill cells"}</span>
           </span>
           <span class="note-mode-indicator" aria-hidden="true">
             <span class="note-mode-state">${state.numberMode === "note" ? "On" : "Off"}</span>
