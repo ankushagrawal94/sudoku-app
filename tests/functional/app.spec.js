@@ -112,6 +112,25 @@ test("fill notes is undoable", async ({ page }) => {
   await expect(page.locator(".notes .on")).toHaveCount(0);
 });
 
+test("mobile pencil notes stay clear of thick block dividers", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile");
+  await page.goto("/");
+  await importGrid(page);
+  await page.locator("[data-action='fill-notes']").click();
+
+  const spacing = await page.getByTestId("cell-21").evaluate((cell) => {
+    const note = cell.querySelector(".notes i:nth-child(8)");
+    const text = document.createRange();
+    text.selectNodeContents(note);
+    const cellBox = cell.getBoundingClientRect();
+    const textBox = text.getBoundingClientRect();
+    const borderBottom = Number.parseFloat(getComputedStyle(cell).borderBottomWidth);
+    return cellBox.bottom - borderBottom - textBox.bottom;
+  });
+
+  expect(spacing).toBeGreaterThanOrEqual(1.5);
+});
+
 test("new puzzle generates a different board", async ({ page }) => {
   await page.goto("/");
 
