@@ -500,7 +500,7 @@ function renderBoard() {
   const showCounts = state.lineCountsVisible && highlightedDigit;
   const counts = showCounts ? getLineCounts(highlightedDigit) : null;
   return `
-    <div class="board-frame analytics-block ${showCounts ? "show-counts" : ""}" data-testid="board-frame">
+    <div class="board-frame ${showCounts ? "show-counts" : ""}" data-testid="board-frame">
       ${showCounts ? `
         <div class="count-corner">${highlightedDigit}</div>
         <div class="column-counts" aria-label="Selected digit column counts">
@@ -1028,7 +1028,7 @@ function relationshipLabel(kind) {
 
 function renderImportPanel() {
   return `
-    <section class="panel import-panel analytics-block">
+    <section class="panel import-panel analytics-image-block">
       <div class="panel-title">
         <h2>Import screenshot</h2>
         <button data-action="toggle-import">Close</button>

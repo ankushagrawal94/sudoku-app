@@ -2,7 +2,7 @@ function postHogUiHost(apiHost) {
   return apiHost.includes("eu.i.posthog.com") ? "https://eu.posthog.com" : "https://us.posthog.com";
 }
 
-export function createProductAnalytics({ client, key, host, online = () => true }) {
+export function createProductAnalytics({ client, key, host }) {
   let enabled = false;
 
   return {
@@ -12,27 +12,27 @@ export function createProductAnalytics({ client, key, host, online = () => true 
         client.init(key, {
           api_host: host,
           ui_host: postHogUiHost(host),
-          autocapture: false,
-          capture_pageview: false,
-          capture_pageleave: false,
+          autocapture: true,
+          capture_pageview: true,
+          capture_pageleave: true,
           persistence: "localStorage",
           person_profiles: "identified_only",
-          disable_session_recording: true,
+          disable_session_recording: false,
           disable_external_dependency_loading: true,
-          advanced_disable_flags: true,
-          advanced_disable_feature_flags: true,
-          capture_heatmaps: false,
-          enable_heatmaps: false,
-          capture_performance: false,
-          capture_dead_clicks: false,
-          capture_exceptions: false,
-          disable_surveys: true,
-          enable_recording_console_log: false,
-          mask_all_text: true,
-          mask_all_element_attributes: true,
+          advanced_disable_flags: false,
+          advanced_disable_feature_flags: false,
+          capture_heatmaps: true,
+          enable_heatmaps: true,
+          capture_performance: true,
+          capture_dead_clicks: true,
+          capture_exceptions: true,
+          disable_surveys: false,
+          enable_recording_console_log: true,
+          mask_all_text: false,
+          mask_all_element_attributes: false,
           session_recording: {
-            blockSelector: ".analytics-block",
-            maskAllInputs: true
+            blockSelector: ".analytics-image-block",
+            maskAllInputs: false
           },
           loaded: () => {}
         });
@@ -44,7 +44,7 @@ export function createProductAnalytics({ client, key, host, online = () => true 
     },
 
     capture(event, properties = {}) {
-      if (!enabled || !online() || !client?.capture) return false;
+      if (!enabled || !client?.capture) return false;
       try {
         client.capture(event, properties);
         return true;

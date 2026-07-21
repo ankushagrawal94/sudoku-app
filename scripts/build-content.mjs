@@ -264,7 +264,7 @@ function renderContactPage() {
 
 function renderPrivacyPage() {
   const url = `${siteUrl}/${privacyPath}`;
-  const description = "How Sudoku Pilot stores puzzle data, processes screenshot imports, and uses privacy-friendly analytics.";
+  const description = "How Sudoku Pilot stores puzzle data, processes screenshot imports, and uses product analytics.";
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -295,8 +295,8 @@ function renderPrivacyPage() {
       <article class="contact-page">
         <header class="article-header">
           <h1>Privacy</h1>
-          <p class="dek">Sudoku Pilot keeps gameplay on your device and limits the information used to operate and understand the site.</p>
-          <p class="byline">Last updated July 20, 2026</p>
+          <p class="dek">Sudoku Pilot stores gameplay locally while product analytics records how the app is used.</p>
+          <p class="byline">Last updated July 21, 2026</p>
         </header>
         <section>
           <h2>Game data stays in your browser</h2>
@@ -308,8 +308,8 @@ function renderPrivacyPage() {
         </section>
         <section>
           <h2>Hosting and analytics</h2>
-          <p>The site is hosted by Vercel, which may process standard request information needed to deliver the site and protect its services. Sudoku Pilot uses Vercel Web Analytics for aggregate page traffic and PostHog for product analytics. PostHog assigns a persistent anonymous browser identifier and records events such as app opens, puzzle milestones, hints, lessons, practice, and screenshot-import workflow outcomes. These events can include aggregate properties such as difficulty, puzzle source, elapsed time, move count, and hint count. PostHog does not receive screenshots, recognized grids, cell values, or pencil notes.</p>
-          <p>Session replay is disabled. Automatic page events and automatic interaction capture are also disabled. The app attempts semantic analytics events only when the browser reports that it is online; offline activity is not queued by the app for later analytics delivery. Clearing local data resets the anonymous analytics identifier. See <a href="https://posthog.com/privacy">PostHog's privacy information</a> and <a href="https://vercel.com/docs/analytics/privacy-policy">Vercel's analytics privacy documentation</a>.</p>
+          <p>The site is hosted by Vercel, which may process standard request information needed to deliver the site and protect its services. Sudoku Pilot uses Vercel Web Analytics for aggregate page traffic and PostHog for product analytics. PostHog assigns a persistent anonymous browser identifier and records semantic events such as app opens, puzzle milestones, hints, lessons, practice, and screenshot-import workflow outcomes. These custom events can include aggregate properties such as difficulty, puzzle source, elapsed time, move count, and hint count.</p>
+          <p>Session replay records puzzle interactions and can include displayed puzzle values, notes, lessons, and hint content. Automatic collection records page views, clicks, scrolls, heatmaps, dead clicks, performance metrics, errors, and console messages. PostHog can also deliver surveys and feature flags configured for the project. The imported screenshot preview remains excluded from replay, and custom events do not attach screenshots or raw puzzle contents. PostHog manages analytics delivery and may buffer or retry delivery after a connection failure. Clearing local data resets the anonymous analytics identifier. See <a href="https://posthog.com/privacy">PostHog's privacy information</a> and <a href="https://vercel.com/docs/analytics/privacy-policy">Vercel's analytics documentation</a>.</p>
         </section>
         <section>
           <h2>Contact</h2>

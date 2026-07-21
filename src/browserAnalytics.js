@@ -5,15 +5,14 @@ export function createBrowserProductAnalytics(options = {}) {
   const testClient = options.client ?? globalThis.window?.__SUDOKU_ANALYTICS_CLIENT__;
   const key = options.key ?? env.VITE_POSTHOG_KEY ?? (testClient ? "browser-test-key" : "");
   const host = options.host ?? env.VITE_POSTHOG_HOST ?? "https://us.i.posthog.com";
-  const online = options.online ?? (() => globalThis.navigator?.onLine !== false);
-  const loadClient = options.loadClient ?? (() => import("posthog-js/dist/module.no-external.js"));
+  const loadClient = options.loadClient ?? (() => import("posthog-js/dist/module.full.no-external.js"));
   const pending = [];
   let analytics = null;
   let resetRequested = false;
 
   function activate(clientModule) {
     const client = clientModule.default || clientModule;
-    analytics = createProductAnalytics({ client, key, host, online });
+    analytics = createProductAnalytics({ client, key, host });
     if (!analytics.init()) return;
     if (resetRequested) {
       analytics.reset();
@@ -39,7 +38,7 @@ export function createBrowserProductAnalytics(options = {}) {
 
     capture(event, properties = {}) {
       if (analytics) return analytics.capture(event, properties);
-      if (!key || !online() || resetRequested) return false;
+      if (!key || resetRequested) return false;
       if (pending.length < 50) pending.push([event, properties]);
       return true;
     },
