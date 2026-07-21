@@ -594,12 +594,12 @@ function renderMorePanel() {
     <section class="panel more-panel" data-testid="more-panel">
       <div class="panel-title">
         <h2>More</h2>
-        <button data-action="toggle-more">Close</button>
+        <button class="primary" data-action="toggle-more">Close</button>
       </div>
       ${renderNewPuzzle()}
       ${renderPreferencesPanel()}
-      ${renderTechniqueFilters()}
       ${renderAutomationPanel()}
+      ${renderTechniqueFilters()}
       ${renderInfoPanel()}
       <section class="sub-panel">
         <h2>Local data</h2>
@@ -637,10 +637,7 @@ function renderNewPuzzle() {
       </div>
       <div class="action-stack">
         <button class="primary" data-action="new-puzzle" data-testid="new-puzzle">New generated puzzle</button>
-        <button data-action="practice">Practice selected technique</button>
-        <button data-action="toggle-import">Import screenshot</button>
       </div>
-      <p class="caption">Practice mode advances a generated board until one of your selected techniques is available next.</p>
     </section>
   `;
 }
@@ -677,7 +674,7 @@ function renderAutomationPanel() {
       <div class="panel-title">
         <h2>Run techniques</h2>
       </div>
-      <p class="caption">Applies the selected techniques repeatedly until those methods cannot move the board forward.</p>
+      <p class="caption">Run every checked technique repeatedly until none of them can move the board forward.</p>
       <button class="primary wide" data-action="run-selected" data-testid="run-selected">Run selected techniques</button>
     </section>
   `;
