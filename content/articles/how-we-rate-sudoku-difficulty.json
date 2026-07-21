@@ -1,6 +1,6 @@
 {
   "path": "how-we-rate-sudoku-difficulty",
-  "title": "How We Rate Sudoku Difficulty and Find Better Puzzles",
+  "title": "Rating Sudoku Difficulty",
   "description": "Sudoku Pilot rates puzzle difficulty with logical solve paths, repeated hard gates, uniqueness checks, and a search for varied Expert and Extreme puzzles.",
   "published": "2026-07-21",
   "updated": "2026-07-21",
@@ -13,7 +13,7 @@
   ],
   "sections": [
     {
-      "heading": "Difficulty starts with a complete logical solve",
+      "heading": "The logical baseline",
       "blocks": [
         {
           "type": "paragraph",
@@ -26,7 +26,7 @@
       ]
     },
     {
-      "heading": "One advanced move can dominate the label",
+      "heading": "The one-move problem",
       "blocks": [
         {
           "type": "paragraph",
@@ -39,7 +39,7 @@
       ]
     },
     {
-      "heading": "Hard gates measure repeated difficulty",
+      "heading": "Counting hard gates",
       "blocks": [
         {
           "type": "paragraph",
@@ -56,7 +56,7 @@
       ]
     },
     {
-      "heading": "Finding a puzzle at one exact level takes many attempts",
+      "heading": "Why qualifying puzzles are rare",
       "blocks": [
         {
           "type": "paragraph",
@@ -73,7 +73,7 @@
       ]
     },
     {
-      "heading": "A fun puzzle set needs variety",
+      "heading": "Choosing for variety",
       "blocks": [
         {
           "type": "paragraph",
