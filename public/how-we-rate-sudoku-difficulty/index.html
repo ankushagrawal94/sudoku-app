@@ -55,10 +55,10 @@
       </section>
 
       <section>
-        <h2>Why qualifying puzzles are rare</h2>
-        <p>Adding a correct clue preserves or simplifies the logical work. It cannot create the richer structure we wanted. Our search changes clue sets by removing, adding, and swapping solution-consistent clues, then evaluates each candidate. Qualifying candidates must pass Sudoku Pilot&#39;s solver and uniqueness checks.</p>
-<p>Most candidates fail. The recent search evaluated 4,743 Expert mutations and found 161 qualifiers. It evaluated 27,477 Extreme mutations and found 240 qualifiers. Candidates were rejected when they solved at another level, needed unsupported techniques, missed the five-gate threshold, had poor clue distribution, or repeated an existing logical puzzle.</p>
-<p>About 3 in 100 Expert mutations qualified. Fewer than 1 in 100 Extreme mutations did. A generator can produce valid Sudoku grids quickly. Producing a unique grid with a supported logical path, a precise level, repeated hard gates, and a distinct structure is a narrower problem.</p>
+        <h2>Why good puzzles are rare</h2>
+        <p>A valid Sudoku grid is easy to generate. A good puzzle at a specific level is much rarer. It needs one solution, a complete path through supported techniques, and enough hard gates to feel consistently Expert or Extreme.</p>
+<p>Adding a correct clue gives the solver more information, so it preserves or simplifies the logical path. It cannot create the richer chain of deductions we need. Our search removes clues or swaps them for other correct clues, then runs the rating and uniqueness checks again.</p>
+<p>Most attempts fail those checks. In one recent run, 161 of 4,743 Expert attempts qualified, about 3%. For Extreme, 240 of 27,477 qualified, less than 1%. The rest landed at another level, lacked five gates, needed unsupported techniques, had uneven clue layouts, or repeated puzzle structure we already had.</p>
       </section>
 
       <section>
