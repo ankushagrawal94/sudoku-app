@@ -15,6 +15,7 @@ const headers = Object.fromEntries(vercel.headers?.[0]?.headers?.map(({ key, val
 
 assert.match(headers["content-security-policy"] || "", /default-src 'self'/);
 assert.match(headers["content-security-policy"] || "", /script-src 'self'/);
+assert.match(headers["content-security-policy"] || "", /style-src 'self' 'unsafe-inline'/, "PostHog popup and widget surveys require their bundled inline styles.");
 assert.match(headers["content-security-policy"] || "", /connect-src 'self' https:\/\/us\.i\.posthog\.com https:\/\/eu\.i\.posthog\.com/);
 assert.match(headers["content-security-policy"] || "", /frame-ancestors 'none'/);
 assert.equal(headers["x-frame-options"], "DENY");
@@ -39,6 +40,8 @@ assert.match(gitignore, /^!\.env\.example$/m);
 assert.match(readme, /VITE_POSTHOG_KEY/);
 assert.match(readme, /VITE_POSTHOG_HOST/);
 assert.doesNotMatch(browserAnalyticsSource, /phc_[A-Za-z0-9]/, "Production source must not embed a PostHog project key.");
-assert.match(appSource, /board-frame analytics-block/, "Session replay must block the puzzle board and its cell values.");
+assert.match(browserAnalyticsSource, /posthog-js\/dist\/module\.full\.no-external\.js/, "The bundled full SDK must include replay, surveys, and other optional product modules.");
+assert.doesNotMatch(appSource, /board-frame analytics-block/, "Session replay should include puzzle interactions.");
+assert.match(appSource, /import-panel analytics-image-block/, "Session replay must continue excluding the imported image itself.");
 
 console.log("security configuration tests passed");

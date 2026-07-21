@@ -38,37 +38,38 @@ import { createBrowserProductAnalytics } from "../src/browserAnalytics.js";
   assert.deepEqual(calls[0], ["init", "test-key", {
     api_host: "https://us.i.posthog.com",
     ui_host: "https://us.posthog.com",
-    autocapture: false,
-    capture_pageview: false,
-    capture_pageleave: false,
+    autocapture: true,
+    capture_pageview: true,
+    capture_pageleave: true,
     persistence: "localStorage",
     person_profiles: "identified_only",
-    disable_session_recording: true,
+    disable_session_recording: false,
     disable_external_dependency_loading: true,
-    advanced_disable_flags: true,
-    advanced_disable_feature_flags: true,
-    capture_heatmaps: false,
-    enable_heatmaps: false,
-    capture_performance: false,
-    capture_dead_clicks: false,
-    capture_exceptions: false,
-    disable_surveys: true,
-    enable_recording_console_log: false,
-    mask_all_text: true,
-    mask_all_element_attributes: true,
+    advanced_disable_flags: false,
+    advanced_disable_feature_flags: false,
+    capture_heatmaps: true,
+    enable_heatmaps: true,
+    capture_performance: true,
+    capture_dead_clicks: true,
+    capture_exceptions: true,
+    disable_surveys: false,
+    enable_recording_console_log: true,
+    mask_all_text: false,
+    mask_all_element_attributes: false,
     session_recording: {
-      blockSelector: ".analytics-block",
-      maskAllInputs: true
+      blockSelector: ".analytics-image-block",
+      maskAllInputs: false
     },
     loaded: calls[0]?.[2]?.loaded
   }]);
 
   assert.equal(analytics.capture("app_opened", { returning_local_player: true }), true);
   connected = false;
-  assert.equal(analytics.capture("puzzle_started", { difficulty: "hard" }), false);
+  assert.equal(analytics.capture("puzzle_started", { difficulty: "hard" }), true);
   assert.equal(analytics.reset(), true);
   assert.deepEqual(calls.filter(([kind]) => kind === "capture"), [
-    ["capture", "app_opened", { returning_local_player: true }]
+    ["capture", "app_opened", { returning_local_player: true }],
+    ["capture", "puzzle_started", { difficulty: "hard" }]
   ]);
   assert.deepEqual(calls.at(-1), ["reset"]);
 }

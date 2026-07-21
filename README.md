@@ -38,7 +38,7 @@ Starting screenshot OCR may require connectivity to load its browser-local recog
 
 ## Product analytics
 
-Vercel Web Analytics measures aggregate page traffic. PostHog records a small semantic event set for gameplay funnels, feature adoption, and browser-level retention. Analytics is optional: without a project key, the PostHog module is not loaded and the app remains fully functional.
+Vercel Web Analytics measures aggregate page traffic. PostHog records gameplay funnels, feature adoption, browser-level retention, automatic interaction analytics, and session replays. Analytics is optional: without a project key, the PostHog module is not loaded and the app remains fully functional.
 
 Copy `.env.example` to `.env.local` for local development, or set the same variables in Vercel:
 
@@ -49,9 +49,9 @@ VITE_POSTHOG_HOST=https://us.i.posthog.com
 
 Use `https://eu.i.posthog.com` for an EU project. The public project key is safe to expose to the browser, but it must still be configured through environment settings rather than committed to source.
 
-PostHog captures `app_opened`, puzzle start/first-move/meaningful-play/completion milestones, hint requests, lesson and practice activity, and screenshot-import workflow outcomes. Meaningful play is five entered or applied moves. Events contain aggregate context such as difficulty, source, elapsed seconds, move count, and hint count. They do not contain screenshots, OCR grids, individual cell values, pencil notes, candidates, or individual move contents.
+PostHog captures `app_opened`, puzzle start/first-move/meaningful-play/completion milestones, hint requests, lesson and practice activity, and screenshot-import workflow outcomes. Meaningful play is five entered or applied moves. Custom events contain aggregate context such as difficulty, source, elapsed seconds, move count, and hint count; they do not attach screenshots, OCR grids, individual cell values, pencil notes, candidates, or individual move contents.
 
-Session replay and automatic page events are disabled. The adapter attempts semantic events only when the browser reports that it is online, and offline activity is not queued by the app. PostHog is loaded asynchronously and is never required for startup, solving, OCR, or offline use.
+The full PostHog browser suite is enabled: session replay, autocapture, page views and page leave, heatmaps, dead-click detection, performance metrics, exception and console capture, surveys, feature flags, and remote project configuration. Replay includes puzzle interactions but blocks the screenshot-import panel so the imported image itself is not recorded. PostHog manages analytics delivery and can buffer or retry events after a connection failure. PostHog is loaded asynchronously and is never required for startup, solving, OCR, or offline use.
 
 ## Run locally
 
