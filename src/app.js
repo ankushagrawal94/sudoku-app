@@ -60,13 +60,14 @@ const viewedLessons = new Set();
 
 const state = createInitialState();
 const puzzleJourney = createPuzzleJourney((event, properties) => productAnalytics.capture(event, properties));
-puzzleJourney.resume(puzzleAnalyticsContext(), state.puzzleMoveCount);
+const hasSavedProgress = hasPlayerProgress() || state.hintRequested;
+puzzleJourney.resume(puzzleAnalyticsContext(), state.puzzleMoveCount, hasSavedProgress);
 productAnalytics.capture("app_opened", {
-  has_saved_progress: hasPlayerProgress(),
+  has_saved_progress: hasSavedProgress,
   local_completed_puzzles: state.playerStats.completed,
   current_view: state.view
 });
-if (hasPlayerProgress()) {
+if (hasSavedProgress) {
   productAnalytics.capture("puzzle_resumed", {
     ...puzzleAnalyticsContext(),
     existing_moves: state.puzzleMoveCount
@@ -1392,6 +1393,7 @@ function requestHint() {
     return;
   }
   const check = checkBoard();
+  state.hintRequested = true;
   puzzleJourney.recordHint({
     board_status: check.status,
     technique: state.moves[state.hintIndex]?.technique || "note-diagnosis",
@@ -1579,13 +1581,16 @@ function restorePreviousPuzzle() {
   state.startedAt = Date.now();
   state.puzzleMoveCount = previous.puzzleMoveCount;
   state.hintCount = previous.hintCount;
+  state.hintRequested = previous.hintRequested;
   state.puzzleSource = previous.puzzleSource;
+  state.puzzlePracticeTechnique = previous.puzzlePracticeTechnique;
+  state.puzzlePracticeMode = previous.puzzlePracticeMode;
   state.completionRecorded = previous.completionRecorded;
   state.completionSummary = null;
   state.wasSolved = previous.wasSolved;
   state.previousPuzzle = null;
   state.runMessage = "Restored your previous puzzle.";
-  puzzleJourney.resume(puzzleAnalyticsContext(), state.puzzleMoveCount);
+  puzzleJourney.resume(puzzleAnalyticsContext(), state.puzzleMoveCount, hasPlayerProgress() || state.hintRequested);
   productAnalytics.capture("puzzle_resumed", {
     ...puzzleAnalyticsContext(),
     existing_moves: state.puzzleMoveCount
@@ -1598,7 +1603,10 @@ function snapshotCurrentPuzzle() {
     elapsedBeforeStart: elapsedSeconds(),
     puzzleMoveCount: state.puzzleMoveCount,
     hintCount: state.hintCount,
+    hintRequested: state.hintRequested,
     puzzleSource: state.puzzleSource,
+    puzzlePracticeTechnique: state.puzzlePracticeTechnique,
+    puzzlePracticeMode: state.puzzlePracticeMode,
     completionRecorded: state.completionRecorded,
     wasSolved: state.wasSolved
   };
@@ -1629,20 +1637,23 @@ function puzzleAnalyticsContext() {
     difficulty: state.puzzleSource === "import" ? "custom" : state.difficulty,
     source: state.puzzleSource,
     ...(state.puzzleSource === "practice" ? {
-      practice_technique: state.practiceTechnique,
-      practice_mode: state.practiceMode
+      ...(state.puzzlePracticeTechnique ? { practice_technique: state.puzzlePracticeTechnique } : {}),
+      ...(state.puzzlePracticeMode ? { practice_mode: state.puzzlePracticeMode } : {})
     } : {})
   };
 }
 
 function startTrackedPuzzle(source) {
   state.puzzleSource = source;
+  state.puzzlePracticeTechnique = source === "practice" ? state.practiceTechnique : null;
+  state.puzzlePracticeMode = source === "practice" ? state.practiceMode : null;
   puzzleJourney.start(puzzleAnalyticsContext());
 }
 
 function resetPuzzleStats() {
   state.puzzleMoveCount = 0;
   state.hintCount = 0;
+  state.hintRequested = false;
   state.completionRecorded = false;
   state.completionSummary = null;
   state.wasSolved = isSolved(state.puzzle.values);
@@ -1811,7 +1822,10 @@ function createInitialState() {
     elapsedBeforeStart: 0,
     puzzleMoveCount: 0,
     hintCount: 0,
+    hintRequested: false,
     puzzleSource: "generated",
+    puzzlePracticeTechnique: null,
+    puzzlePracticeMode: null,
     completionRecorded: false,
     completionSummary: null,
     wasSolved: false,
@@ -1849,6 +1863,8 @@ function createInitialState() {
       numberMode: saved.numberMode === "note" ? "note" : "value",
       difficulty: DIFFICULTY_ORDER.includes(saved.difficulty) ? saved.difficulty : defaultDifficulty,
       allowedTechniques: new Set(savedTechniques.filter((technique) => ALL_TECHNIQUES.includes(technique))),
+      practiceTechnique: COMMITTED_COACHING_TECHNIQUES.includes(saved.practiceTechnique) ? saved.practiceTechnique : fallback.practiceTechnique,
+      practiceMode: PRACTICE_MODES.some(({ id }) => id === saved.practiceMode) ? saved.practiceMode : fallback.practiceMode,
       lineCountsVisible: Boolean(saved.lineCountsVisible),
       showMistakes: Boolean(saved.showMistakes),
       showTimer: Boolean(saved.showTimer),
@@ -1859,7 +1875,10 @@ function createInitialState() {
       elapsedBeforeStart: Number(saved.elapsedBeforeStart) || 0,
       puzzleMoveCount: Math.max(0, Number(saved.puzzleMoveCount) || 0),
       hintCount: Math.max(0, Number(saved.hintCount) || 0),
+      hintRequested: Boolean(saved.hintRequested),
       puzzleSource: ["generated", "import", "practice"].includes(saved.puzzleSource) ? saved.puzzleSource : "generated",
+      puzzlePracticeTechnique: COMMITTED_COACHING_TECHNIQUES.includes(saved.puzzlePracticeTechnique) ? saved.puzzlePracticeTechnique : null,
+      puzzlePracticeMode: PRACTICE_MODES.some(({ id }) => id === saved.puzzlePracticeMode) ? saved.puzzlePracticeMode : null,
       completionRecorded: Boolean(saved.completionRecorded),
       wasSolved: isSolved(puzzle.values),
       runMessage: saved.runMessage || "",
@@ -1889,7 +1908,12 @@ function saveState() {
       elapsedBeforeStart: state.elapsedBeforeStart,
       puzzleMoveCount: state.puzzleMoveCount,
       hintCount: state.hintCount,
+      hintRequested: state.hintRequested,
       puzzleSource: state.puzzleSource,
+      puzzlePracticeTechnique: state.puzzlePracticeTechnique,
+      puzzlePracticeMode: state.puzzlePracticeMode,
+      practiceTechnique: state.practiceTechnique,
+      practiceMode: state.practiceMode,
       completionRecorded: state.completionRecorded,
       runMessage: state.runMessage,
       importCells: state.importCells

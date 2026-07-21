@@ -89,6 +89,89 @@ test("records note-only starts and persisted resumes", async ({ page }) => {
     "app_opened",
     "puzzle_resumed"
   ]);
+  await page.locator("[data-digit='2']").click();
+  await expect.poll(async () => (await capturedEvents(page)).map(({ event }) => event)).toEqual([
+    "app_opened",
+    "puzzle_resumed"
+  ]);
+  await page.getByRole("switch", { name: "Notes", exact: true }).click();
+  await page.locator("[data-digit='3']").click();
+  await expect.poll(async () => (await capturedEvents(page)).map(({ event }) => event)).toEqual([
+    "app_opened",
+    "puzzle_resumed",
+    "puzzle_first_move"
+  ]);
+});
+
+test("records hint-only starts and persisted resumes", async ({ page }) => {
+  await installAnalyticsClient(page);
+  await page.goto("/");
+  await page.getByTestId("hint-button").click();
+  await expect.poll(async () => (await capturedEvents(page)).map(({ event }) => event)).toEqual([
+    "app_opened",
+    "puzzle_started",
+    "hint_requested"
+  ]);
+
+  await page.reload();
+  await expect.poll(async () => (await capturedEvents(page)).map(({ event }) => event)).toEqual([
+    "app_opened",
+    "puzzle_resumed"
+  ]);
+  await page.getByTestId("hint-button").click();
+  await expect.poll(async () => (await capturedEvents(page)).map(({ event }) => event)).toEqual([
+    "app_opened",
+    "puzzle_resumed",
+    "hint_requested"
+  ]);
+});
+
+test("restores practice analytics context after reload", async ({ page }) => {
+  await installAnalyticsClient(page);
+  await page.goto("/");
+  await page.locator("[data-view='practice']").click();
+  await page.locator("[data-practice-technique]").selectOption("X-Wing");
+  await page.locator("[data-practice-mode='complete-puzzle']").click();
+  await page.locator("[data-action='start-certified-practice']").click();
+  await page.locator(".cell:not(.given)").first().click();
+  await page.locator("[data-digit='1']").click();
+  await page.locator("[data-practice-technique]").selectOption("Last Digit");
+  await page.locator("[data-practice-mode='find-pattern']").click();
+  await page.reload();
+
+  await expect.poll(async () => (await capturedEvents(page)).find(({ event }) => event === "puzzle_resumed")).not.toBeUndefined();
+  const event = (await capturedEvents(page)).find(({ event: name }) => name === "puzzle_resumed");
+  expect(event.properties).toMatchObject({
+    source: "practice",
+    practice_technique: "X-Wing",
+    practice_mode: "complete-puzzle"
+  });
+});
+
+test("omits unavailable practice context from legacy saves", async ({ page }) => {
+  await installAnalyticsClient(page);
+  await page.goto("/");
+  await page.locator("[data-view='practice']").click();
+  await page.locator("[data-practice-technique]").selectOption("X-Wing");
+  await page.locator("[data-practice-mode='complete-puzzle']").click();
+  await page.locator("[data-action='start-certified-practice']").click();
+  await page.locator(".cell:not(.given)").first().click();
+  await page.locator("[data-digit='1']").click();
+  await page.evaluate(() => {
+    const key = "sudoku-pilot-state-v1";
+    const saved = JSON.parse(window.localStorage.getItem(key));
+    delete saved.practiceTechnique;
+    delete saved.practiceMode;
+    delete saved.puzzlePracticeTechnique;
+    delete saved.puzzlePracticeMode;
+    window.localStorage.setItem(key, JSON.stringify(saved));
+  });
+  await page.reload();
+
+  await expect.poll(async () => (await capturedEvents(page)).find(({ event }) => event === "puzzle_resumed")).not.toBeUndefined();
+  const event = (await capturedEvents(page)).find(({ event: name }) => name === "puzzle_resumed");
+  expect(event.properties).not.toHaveProperty("practice_technique");
+  expect(event.properties).not.toHaveProperty("practice_mode");
 });
 
 test("tracks near-miss practice without counting it as a puzzle", async ({ page }) => {
